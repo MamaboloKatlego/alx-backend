@@ -1,62 +1,63 @@
 #!/usr/bin/env python3
-"""
-Module 5-app
-"""
+""" module 5-app.py with a basic Flask app and Babel setup """
+
 from flask import Flask, render_template, request, g
 from flask_babel import Babel
 
+app = Flask(__name__)
+""" instantiates Babel object """
+babel = Babel(app)
 
+""" mock database user table """
 users = {
-        1: {"name": "Balou", "locale": "fr", "timezone": "Europe/Paris"},
-        2: {"name": "Beyonce", "locale": "en", "timezone": "US/Central"},
-        3: {"name": "Spock", "locale": "kg", "timezone": "Vulcan"},
-        4: {"name": "Teletubby", "locale": None, "timezone": "Europe/London"},
+    1: {"name": "Balou", "locale": "fr", "timezone": "Europe/Paris"},
+    2: {"name": "Beyonce", "locale": "en", "timezone": "US/Central"},
+    3: {"name": "Spock", "locale": "kg", "timezone": "Vulcan"},
+    4: {"name": "Teletubby", "locale": None, "timezone": "Europe/London"},
 }
 
 
 class Config(object):
-    """i18n configuration"""
+    """ config class for Babel """
     LANGUAGES = ['en', 'fr']
     BABEL_DEFAULT_LOCALE = 'en'
     BABEL_DEFAULT_TIMEZONE = 'UTC'
 
 
-app = Flask(__name__)
+""" set above class object as the configuration for the app """
 app.config.from_object(Config)
-babel = Babel(app)
-
-
-@app.route("/", strict_slashes=False)
-def index():
-    """displays a basic hello world message"""
-    return render_template("5-index.html")
 
 
 @babel.localeselector
 def get_locale():
-    """Gets best fmatch locale according to request"""
-    locale = request.args.get('locale')
-    if locale and locale in app.config['LANGUAGES']:
-        return locale
+    """ gets best match for supported languages in locales """
+    if 'locale' in request.args and request.args.get(
+            'locale') in app.config['LANGUAGES']:
+        return request.args.get('locale')
     return request.accept_languages.best_match(app.config['LANGUAGES'])
 
 
 def get_user():
-    """returns a given user"""
-    user_id = request.args.get('login_as')
-
-    if user_id is None:
+    """ returns a user dictionary or None if the ID cannot be found or
+      if login_as was not passed """
+    userId = request.args.get('login_as')
+    try:
+        return users[int(userId)]
+    except (KeyError, ValueError, TypeError):
         return None
-
-    return users.get(int(user_id))
 
 
 @app.before_request
 def before_request():
-    """sets a user object to flask.g"""
-    user = get_user()
-    g.user = user
+    """ find a user if any, and set it as a global on flask.g.user """
+    g.user = get_user()
 
 
-if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port="5000")
+@app.route('/', strict_slashes=False)
+def index() -> str:
+    """ Basic Flask App """
+    return render_template('5-index.html')
+
+
+if __name__ == '__main__':
+    app.run()
